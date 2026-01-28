@@ -39,26 +39,13 @@ void q15_axpy_rvv(const int16_t *a, const int16_t *b,
 #else
     int32_t vl;  // Vector length
     for (int i = 0; i < n; i += vl) {
-        // Setting vector length for int16_t elements
         vl = vsetvl_e16m2(n - i); 
-
-        // Loading vectors from memory
         vint16m2_t va = vle16_v_i16m2(&a[i], vl);
         vint16m2_t vb = vle16_v_i16m2(&b[i], vl);
-
-        // Computing alpha * b
         vint32m4_t vprod = vmul_vx_i32m4(vb, alpha, vl);
-
-        // Converting a to int32 for addition
         vint32m4_t va_ext = vwadd_vx_i32m4(va, 0, vl); 
-
-        // Add a + alpha * b
         vint32m4_t vacc = vadd_vv_i32m4(va_ext, vprod, vl);
-
-        // Saturate to Q15 range
         vint16m2_t vy = vnclip_wx_i16m2(vacc, 15, vl);
-
-        // Storing result back to memory
         vse16_v_i16m2(&y[i], vy, vl);
     }
     
@@ -119,3 +106,23 @@ int main(void) {
     free(a); free(b); free(y0); free(y1);
     return ok ? 0 : 1;
 }
+
+
+
+
+/*
+// For the simulation, I used qemu-riscv64 to run the compiled ELF binary.
+// Here is how I compiled and ran the code:
+
+riscv64-unknown-elf-gcc -march=rv64imcbvzifencei -mabi=lp64d q15_axpy_challenge.c -o q15_axpy.elf
+
+qemu-riscv64 q15_axpy.elf
+
+AND THE OUTPUT IS:
+Cycles ref: 6229328
+Verify RVV: OK (max diff = 0)
+Cycles RVV: 4070398
+
+@author Kouachi Corneille EKON
+@linkedin: https://www.linkedin.com/in/ekon-ihc
+*/
